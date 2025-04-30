@@ -1,0 +1,19 @@
+;; Load the environment
+
+(env-data {"disable-marmalade":true,
+           "disable-util-lib":false,
+           "disable-test-accounts":false})
+
+(load "kda-env/init.repl")
+(load "helpers/init.repl")
+; Load my module
+(begin-tx)
+(namespace 'CLAIM_NS)
+(load "claim.pact")
+(typecheck "CLAIM_NS.reward-claim")
+(commit-tx)
+
+(env-gasmodel "table")(env-gaslimit 150000)
+(load "testing/main.repl")
+
+(enforce (< (env-gas) 10000) "Gas should be less than 10,000")

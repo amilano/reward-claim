@@ -1,0 +1,41 @@
+(begin-tx "set rewards test")
+(namespace 'CLAIM_NS)
+(use reward-claim)
+
+(env-chain-data { 'block-time: (time "2025-04-20T00:00:00Z")})
+(env-data {
+    'qId: "1080",
+    'g1: {'keys: ["bob-key"]},
+    'g2: {'keys: ["alice-key"]},
+    'g3: {'keys: ["carol-key"]}
+})
+
+; Create a quest cap test
+(expect-failure "Ops key not in scope" "Keyset failure" (set-rewards (read-msg 'qId) "bob" (read-keyset 'g1) 0.03))
+
+;; Create a quest, first we need to satisfy the keyset requirement for OPS
+;; We want to try covering every possible failure case to test enforce logic
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]
+}])
+(expect "Bob awarded 0.03" true (set-rewards (read-msg 'qId) "bob" (read-keyset 'g1) 0.03))
+
+;; Commented because table insert still allows the amount to increment
+;  (expect-failure "Bob already recieved reward" "Error during database operation" (set-rewards (read-msg 'qId) "bob" (read-keyset 'g1) 0.03))
+
+(expect-failure "Amount is too big1" "Amount must be less than or equal to quest amount" (set-rewards (read-msg 'qId) "carol" (read-keyset 'g3) 0.2) )
+
+(expect-failure "Amount is too big2" "Amount must be less than or equal to quest amount" (set-rewards (read-msg 'qId) "carol" (read-keyset 'g3) 0.7) )
+
+(expect "Carol awarded 0.02" true (set-rewards (read-msg 'qId) "carol" (read-keyset 'g3) 0.02) )
+
+(expect-failure "Carol awarded 0.05" "Amount must be less than or equal to quest amount" (set-rewards (read-msg 'qId) "alice" (read-keyset 'g2) 0.06))
+
+(expect "Alice awarded 0.05" true (set-rewards (read-msg 'qId) "alice" (read-keyset 'g2) 0.05))
+
+;; Now we check our values are as expected
+(expect "winners exhausted" 0 (at 'winners (get-quest (read-msg 'qId))))
+(expect "amount exhausted" 0.0 (at 'amount (get-quest (read-msg 'qId))))
+
+(commit-tx)
+

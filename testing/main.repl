@@ -1,0 +1,27 @@
+;; Load the contract state
+
+;; Load all tests
+
+;; create-quest
+(load "create-quest.repl")
+(print "Create Quest Testing Successful")
+(env-sigs [])
+(env-data {})
+
+;; set-reward
+(load "set-reward.repl")
+(print "Set Reward Testing Successful")
+(env-sigs [])
+(env-data {})
+
+;; claim-quest
+(load "claim.repl")
+(print "Claim Testing Successful")
+(env-sigs [])
+(env-data {})
+
+;; read functions
+(load "read.repl")
+
+;; bulk-claim test
+;  (load "bulk-claim.repl")

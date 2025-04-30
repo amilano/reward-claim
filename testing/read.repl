@@ -1,0 +1,14 @@
+(begin-tx "read only testing")
+(namespace 'CLAIM_NS)
+(use reward-claim)
+
+;; Common lookups that may need to take place, uncomment print to see the results
+;  (print (get-user-claim "bob" "1080"))
+(expect "Bob's claim" 0.0 (get-user-claim "bob" "1080"))
+;  (print (get-user-stats "bob"))
+(expect "Bob's stats" 0.03 (at 'totalClaimed (get-user-stats "bob")))
+;  (print (get-quest "1080"))
+(expect "Quest 1080" 0.0 (at 'amount (get-quest "1080")))
+;  (print (treasury-balance))
+(expect "Treasury balance" 0.0 (treasury-balance))
+(commit-tx)

@@ -1,0 +1,80 @@
+(begin-tx "Test validate-winning")
+(namespace 'CLAIM_NS)
+(use reward-claim)
+(env-data {
+    'qId: "1080",
+    'userId: "bob",
+    'reward: 0.03
+})
+
+(expect "Bob tried to withdraw twice" true (validate-winning (read-decimal 'reward) (read-msg 'userId) (read-msg 'qId) false))
+(expect-failure "Bob tried to withdraw twice" "Reward already claimed" (validate-winning (read-decimal 'reward) (read-msg 'userId) (read-msg 'qId) true))
+(expect-failure "Bob tried to withdraw twice" "No value found in table" (validate-winning (read-decimal 'reward) (read-msg 'userId) "1005" false))
+(expect-failure "Bob tried to withdraw twice" "No value found in table" (validate-winning (read-decimal 'reward) "faker" (read-msg 'qId) false))
+(expect-failure "Bob tried to withdraw twice" "Reward must be greater than 0.0" (validate-winning -0.01 (read-msg 'userId) (read-msg 'qId) false))
+(expect-failure "Bob tried to withdraw twice" "Reward must be less than quest amount" (validate-winning 15.0 (read-msg 'userId) (read-msg 'qId) false))
+
+(commit-tx)
+
+(begin-tx "Bob claims rewards")
+(namespace 'CLAIM_NS)
+(use reward-claim)
+
+(env-data {
+    'qId: "1080"
+})
+
+; Create a quest cap test
+(expect-failure "Bob's key not in scope" "Keyset failure" (claim "bob" (read-msg 'qId)))
+
+; Now we test success
+(env-sigs [{
+    'key: "bob-key", 'caps: [(CLAIMABLE "bob" "1080")]
+}])
+(expect "Bob withdrew 0.03" "bob claimed 0.03 rewards from quest 1080" (claim "bob" (read-msg 'qId)))
+
+(commit-tx)
+
+
+(begin-tx "Bob tries claiming again")
+(namespace 'CLAIM_NS)
+(use reward-claim)
+
+; Now we test success
+(env-sigs [{
+    'key: "bob-key", 'caps: [(CLAIMABLE "bob" "1080")]
+}])
+
+(expect-failure "Bob tried to withdraw twice" "No rewards to claim" (claim "bob" (read-msg 'qId)))
+(commit-tx)
+
+(begin-tx "Alice claims rewards")
+(namespace 'CLAIM_NS)
+(use reward-claim)
+
+; Create a quest cap test
+(expect-failure "Alice's key not in scope" "Keyset failure" (claim "alice" (read-msg 'qId)))
+
+; Now we test success
+(env-sigs [{
+    'key: "alice-key", 'caps: [(CLAIMABLE "alice" "1080")]
+}])
+(expect "Alice withdrew 0.05" "alice claimed 0.05 rewards from quest 1080" (claim "alice" (read-msg 'qId)))
+
+(commit-tx)
+
+(begin-tx "Carol claims rewards")
+(namespace 'CLAIM_NS)
+(use reward-claim)
+
+; Create a quest cap test
+(expect-failure "Carol's key not in scope" "Keyset failure" (claim "carol" (read-msg 'qId)))
+
+; Now we test success
+(env-sigs [{
+    'key: "carol-key", 'caps: [(CLAIMABLE "carol" "1080")]
+}])
+(expect "Carol withdrew 0.02" "carol claimed 0.02 rewards from quest 1080" (claim "carol" (read-msg 'qId)))
+(expect "Balance is 0.0" 0.0 (coin.get-balance CLAIM-ACCOUNT))
+(commit-tx)
+

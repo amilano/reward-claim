@@ -1,0 +1,17 @@
+(begin-tx)
+(define-namespace "CLAIM_NS" basic-guards.GUARD_SUCCESS basic-guards.GUARD_SUCCESS)
+(namespace "CLAIM_NS")
+
+
+(env-data {'ks-gov:["gov"], 'ks-ops:["ops"]})
+(define-keyset "CLAIM_NS.governance" (read-keyset 'ks-gov))
+(define-keyset "CLAIM_NS.ops" (read-keyset 'ks-ops))
+
+(env-keys ["gov"])
+
+(commit-tx)
+
+
+(env-data {})
+(env-keys [])
+(env-sigs [])
