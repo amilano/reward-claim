@@ -7,12 +7,9 @@
     'reward: 0.03
 })
 
-(expect "Bob tried to withdraw twice" true (validate-winning (read-decimal 'reward) (read-msg 'userId) (read-msg 'qId) false))
-(expect-failure "Bob tried to withdraw twice" "Reward already claimed" (validate-winning (read-decimal 'reward) (read-msg 'userId) (read-msg 'qId) true))
-(expect-failure "Bob tried to withdraw twice" "No value found in table" (validate-winning (read-decimal 'reward) (read-msg 'userId) "1005" false))
-(expect-failure "Bob tried to withdraw twice" "No value found in table" (validate-winning (read-decimal 'reward) "faker" (read-msg 'qId) false))
-(expect-failure "Bob tried to withdraw twice" "Reward must be greater than 0.0" (validate-winning -0.01 (read-msg 'userId) (read-msg 'qId) false))
-(expect-failure "Bob tried to withdraw twice" "Reward must be less than quest amount" (validate-winning 15.0 (read-msg 'userId) (read-msg 'qId) false))
+(expect "Bob tries to withdraw" true (validate-winning (read-msg 'userId) (read-msg 'qId)))
+(expect-failure "Bob tried to withdraw a different quest" "No value found in table" (validate-winning  (read-msg 'userId) "1005"))
+(expect-failure "faker tried to withdraw" "No value found in table" (validate-winning  "faker" (read-msg 'qId)))
 
 (commit-tx)
 
@@ -45,7 +42,7 @@
     'key: "bob-key", 'caps: [(CLAIMABLE "bob" "1080")]
 }])
 
-(expect-failure "Bob tried to withdraw twice" "No rewards to claim" (claim "bob" (read-msg 'qId)))
+(expect-failure "Bob tried to withdraw twice" "Reward already claimed" (claim "bob" (read-msg 'qId)))
 (commit-tx)
 
 (begin-tx "Alice claims rewards")

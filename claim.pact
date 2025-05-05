@@ -1,6 +1,7 @@
 (module reward-claim GOV
 
 (use free.util-fungible)
+(use free.util-time)
 
 ; Capabilities
 (defcap GOV ()
@@ -104,29 +105,29 @@
 
 (defun set-rewards:bool (questId:string userId:string guard:guard amount:decimal)
   @doc "Qualifies rewards to a user"
-  (enforce (> amount 0.0) "Amount must be greater than 0")
+
+  ;; Validates the quest entries
+  (validate-set-rewards amount questId)
   (enforce-valid-account userId)
 
   (with-read quests questId
     { 'startDate := sd, 'endDate := ed, 'amount := a, 'winners := w }
 
-    ;; Validates the quest entries
-    (validate-set-rewards ed a amount w)
-
     (with-capability (OPS)
       (update quests questId { 'amount: (- a amount), 'winners: (- w 1) }))
 
-        (insert users (user-key userId questId) { 'reward: amount, 'claimed: false, 'guard: guard })
-        (emit-event (SET-REWARD userId questId amount))))
+      (insert users (user-key userId questId) { 'reward: amount, 'claimed: false, 'guard: guard })
+      (emit-event (SET-REWARD userId questId amount))))
 
 ; Internal Functions
 
 (defun claim:string (userId:string questId:string)
   @doc "Claims rewards for a user"
-  (with-read users (user-key userId questId) {'reward:= r, 'claimed:= c,  'guard:= g }
-  (enforce (> r 0.0) "No rewards to claim")
+
   ;; Validates if there is enough reward to pay out
-  (validate-winning r userId questId c)
+  (validate-winning userId questId)
+
+  (with-read users (user-key userId questId) {'reward:= r, 'guard:= g }
 
   (with-capability (CLAIMABLE userId questId)
     (install-capability (coin.TRANSFER CLAIM-ACCOUNT userId r))
@@ -138,7 +139,7 @@
     (emit-event (CLAIM-INFO userId questId r))
     (format "{} claimed {} rewards from quest {}" [userId r questId])))
 
-(defun increment-user-stats (userId:string questId:string reward:decimal)
+(defun increment-user-stats:string (userId:string questId:string reward:decimal)
   @doc "Increments the user stats"
   (require-capability (CLAIMABLE userId questId))
 
@@ -166,7 +167,6 @@
 ; Constants
 
 (defconst STRLENGTH:integer 3)
-(defconst EPOCH (time "1970-01-01T00:00:00Z"))
 
 ; Helper Functions
 
@@ -197,14 +197,13 @@
 
 ; Validation Functions
 
-(defun validate-winning:bool (reward:decimal userId:string questId:string claimed:bool)
+(defun validate-winning:bool (userId:string questId:string)
   @doc "Validates that the reward is not empty"
-  (enforce (not claimed) "Reward already claimed")
-  (enforce (> reward 0.0) "Reward must be greater than 0.0")
-  (with-read users (user-key userId questId) { 'reward:= r }
-    (enforce (<= reward r) "Reward must be less than quest amount")
+  (with-read users (user-key userId questId) { 'reward:= r, 'claimed:= c }
+    (enforce (not c) "Reward already claimed")
+    (enforce (> r 0.0) "No rewards to claim")
     (let ((t:decimal (treasury-balance)))
-    (enforce (<= reward t) "Not enough funds in treasury"))))
+    (enforce (<= r t) "Not enough funds in treasury"))))
 
 (defun validate-quest:bool (amount:decimal startDate:time endDate:time winners:integer)
   @doc "Validates the create quest parameters"
@@ -213,14 +212,20 @@
   (enforce (> endDate startDate) "End date must be greater than start date")
   (enforce (>= startDate (curr-time) ) "Start date must be greater than or equal to current time"))
 
-; ed = endDate, qa = quest amount, amount = payout amount, w = winners
-(defun validate-set-rewards:bool (ed:time qa:decimal amount:decimal w:integer)
+; ed = endDate, a = quest amount, amount = payout amount, w = winners
+(defun validate-set-rewards:bool (amount:decimal questId:string)
   @doc "Validates the quest entries"
-  (enforce (> ed (curr-time)) "Quest has not ended")
-  (enforce (<= amount qa) "Amount must be less than or equal to quest amount")
+  (enforce (> amount 0.0) "Amount must be greater than 0")
+
+  (with-read quests questId
+    { 'startDate := sd, 'endDate := ed, 'amount := a, 'winners := w }
+
+  (enforce (is-past ed) "Quest end date must be complete before rewards are distributed")
+  (enforce (<= amount a) "Amount must be less than or equal to quest amount")
+
   (let ((t:decimal (treasury-balance)))
     (enforce (>= t amount) "Not enough funds in treasury"))
-  (enforce (> w 0) "No winners left"))
+  (enforce (> w 0) "No winners left")))
 
 (defun validate-string:bool (str:string min-length:integer)
   @doc "Validates that a string is not empty and meets minimum length"

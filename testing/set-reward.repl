@@ -2,7 +2,7 @@
 (namespace 'CLAIM_NS)
 (use reward-claim)
 
-(env-chain-data { 'block-time: (time "2025-04-20T00:00:00Z")})
+(env-chain-data { 'block-time: (time "2025-05-21T00:00:00Z")})
 (env-data {
     'qId: "1080",
     'g1: {'keys: ["bob-key"]},
@@ -24,6 +24,8 @@
 ;  (expect-failure "Bob already recieved reward" "Error during database operation" (set-rewards (read-msg 'qId) "bob" (read-keyset 'g1) 0.03))
 
 (expect-failure "Amount is too big1" "Amount must be less than or equal to quest amount" (set-rewards (read-msg 'qId) "carol" (read-keyset 'g3) 0.2) )
+
+(expect-failure "Amount is too big2" "Amount must be less than or equal to quest amount" (set-rewards (read-msg 'qId) "carol" (read-keyset 'g3) 0.7) )
 
 (expect-failure "Amount is too big2" "Amount must be less than or equal to quest amount" (set-rewards (read-msg 'qId) "carol" (read-keyset 'g3) 0.7) )
 
