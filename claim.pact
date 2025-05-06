@@ -20,6 +20,10 @@
   (compose-capability (USER-PROOF userId questId))
   (compose-capability (CLAIM)))
 
+(defcap DEBIT-GLOBAL ()
+  @doc "Internal capability to debit the global funds"
+  true)
+
 ; Event Trackers
 
 (defcap SET-REWARD (userId:string questId:string amount:decimal)
@@ -58,9 +62,18 @@
   amount:decimal
   guard:guard)
 
+(defschema global-funds-schema
+  @doc "Key value is defconst GLOBAL"
+  total-to-pay:decimal)
+
+(defschema treasury-schema
+  @doc "Key value is treasury"
+  balance:decimal)
+
 (deftable quests:{quest-schema})
 (deftable users:{user-schema})
 (deftable userstats:{general-stats-schema})
+(deftable global-funds:{global-funds-schema})
 
 ; Treasury
 
@@ -74,18 +87,24 @@
 
 ; Initiator Functions
 
-(defun create-quest:string (questId:string amount:decimal startDate:time endDate:time winners:integer)
+(defun create-quest:string (questId:string amount:decimal startDate:time endDate:time winners:integer sender:string)
   @doc "Creates a quest"
 
   ;; contains enforcement for all inputs, tx will fail if any of these are not met
   (validate-quest amount startDate endDate winners)
   (validate-string questId STRLENGTH)
 
+  (coin.transfer-create sender CLAIM-ACCOUNT CLAIM-GUARD amount)
+
   (with-capability (OPS)
     (insert quests questId { "amount": amount,
             "startDate": startDate,
             "endDate": endDate,
-            "winners": winners }))
+            "winners": winners })
+
+    ;; global funds tracking
+    (global-funds-credit amount))
+
     (emit-event (CREATE-QUEST questId amount startDate endDate winners))
     (format "Quest {} created" [questId]))
 
@@ -133,6 +152,9 @@
     (install-capability (coin.TRANSFER CLAIM-ACCOUNT userId r))
     (coin.transfer-create CLAIM-ACCOUNT userId g r)
     (increment-user-stats userId questId r))
+    ;; remove claimed funds from global funds, protected with an internal capability
+    (with-capability (DEBIT-GLOBAL)
+    (global-funds-debit r))
 
     (update users (user-key userId questId) { 'reward: 0.0, 'claimed: true })
 
@@ -148,6 +170,24 @@
   { 'totalClaims := tc, 'totalClaimed := tcl, 'lastClaim := lc }
     (write userstats userId { 'totalClaims: (+ tc 1), 'totalClaimed: (+ tcl reward), 'lastClaim: (curr-time) })))
 
+(defun global-funds-credit:string (amount:decimal)
+  @doc "Checks if the global funds are enough to pay out"
+  (require-capability (OPS))
+  (with-default-read global-funds GLOBAL
+      { 'total-to-pay: 0.0 }
+      { 'total-to-pay:= total }
+
+    (let ((t:decimal (treasury-balance)))
+    (enforce (<= (+ total amount) t) "Not enough funds in treasury"))
+    (write global-funds GLOBAL { 'total-to-pay: (+ total amount) })))
+
+(defun global-funds-debit:string (amount:decimal)
+  @doc "Checks if the global funds are enough to pay out"
+  (require-capability (DEBIT-GLOBAL))
+  (with-read global-funds GLOBAL
+    { 'total-to-pay:= t }
+    (enforce (>= t amount) "Not enough funds in treasury")
+    (write global-funds GLOBAL { 'total-to-pay: (- t amount) })))
 
 (defun admin-withdrawal:string (questId:string receiver:string)
   @doc "Allows the admin to withdraw funds from the escrow based on questId"
@@ -167,6 +207,7 @@
 ; Constants
 
 (defconst STRLENGTH:integer 3)
+(defconst GLOBAL:string "GLOBAL")
 
 ; Helper Functions
 
@@ -238,3 +279,4 @@
 (create-table users)
 (create-table quests)
 (create-table userstats)
+(create-table global-funds)
