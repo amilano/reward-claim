@@ -8,7 +8,8 @@
   (enforce-keyset "CLAIM_NS.governance" ))
 
 (defcap OPS ()
-  (enforce-keyset "CLAIM_NS.ops"))
+  (enforce-keyset "CLAIM_NS.ops")
+  (compose-capability (DEBIT-GLOBAL)))
 
 (defcap USER-PROOF (userId:string questId:string)
   (with-read users (user-key userId questId)
@@ -198,7 +199,9 @@
     (enforce (>= t a) "Not enough funds in treasury"))
 
     (with-capability (OPS)
-      (update quests questId { 'amount: 0.0 }))
+      ;; We want to clear out any possible funds or winner positions left
+      (update quests questId { 'amount: 0.0, 'winners: 0 })
+      (global-funds-debit a))
 
         (with-capability (CLAIM)
           (install-capability (coin.TRANSFER CLAIM-ACCOUNT receiver a))

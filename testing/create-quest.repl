@@ -48,6 +48,7 @@
     'endDate: (time "2025-05-20T00:00:00Z"),
     'winners: 3
 })
+
 (env-sigs [{
     'key: "ops", 'caps: [(OPS)]},
     {'key: "dave-key", 'caps: [(coin.TRANSFER "dave" CLAIM-ACCOUNT 10.0)]
