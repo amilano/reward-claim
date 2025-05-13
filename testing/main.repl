@@ -23,5 +23,11 @@
 ;; read functions
 (load "read.repl")
 
+;; pause/unpause tests
+(load "pause.repl")
+(print "Pause/Unpause Testing Successful")
+(env-sigs [])
+(env-data {})
+
 ;; bulk-claim test
 ;  (load "bulk-claim.repl")

@@ -1,0 +1,199 @@
+(begin-tx "Pause the contract")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]}
+])
+(expect "Contract paused" "Paused" (pause))
+(commit-tx)
+
+(begin-tx "Test create-quest operation after pause")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-chain-data { 'block-time: (time "2025-06-20T00:00:00Z")})
+(env-data {
+    'qId: "1090",
+    'amount: 0.1,
+    'startDate: (time "2025-06-20T00:00:00Z"),
+    'endDate: (time "2025-07-20T00:00:00Z"),
+    'winners: 3
+})
+
+; Create a quest
+(expect-failure "Contract paused" "Contract is currently paused. Cannot perform operation." (create-quest (read-msg 'qId )  0.1 (read-msg 'startDate ) (read-msg 'endDate ) 3))
+(commit-tx)
+
+(begin-tx "Unpause the contract")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]}
+])
+(expect "Contract unpaused" "Unpaused" (unpause))
+(commit-tx)
+
+(begin-tx "Test create-quest operation after unpause")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-chain-data { 'block-time: (time "2025-06-20T00:00:00Z")})
+(env-data {
+    'qId: "1090",
+    'amount: 0.1,
+    'startDate: (time "2025-06-20T00:00:00Z"),
+    'endDate: (time "2025-07-20T00:00:00Z"),
+    'winners: 3
+})
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]},
+    {'key: "dave-key", 'caps: [(coin.TRANSFER "dave" CLAIM-ACCOUNT 0.1)]}
+])
+(coin.transfer "dave" CLAIM-ACCOUNT 0.1)
+
+; Create a quest
+(expect "Quest Created" "Quest 1090 created" (create-quest (read-msg 'qId )  (read-decimal 'amount ) (read-msg 'startDate ) (read-msg 'endDate ) (read-msg 'winners )))
+(expect "amount 0.1" 0.1 (at 'amount (get-quest (read-msg 'qId ))))
+(commit-tx)
+
+(begin-tx "Pause the contract")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]}
+])
+(expect "Contract paused" "Paused" (pause))
+(commit-tx)
+
+(begin-tx "Test set-rewards operation after pause")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-chain-data { 'block-time: (time "2025-06-20T00:00:00Z")})
+(env-data {
+    'qId: "1090",
+    'g1: {'keys: ["bob-key"]},
+    'g2: {'keys: ["alice-key"]},
+    'g3: {'keys: ["carol-key"]}
+})
+; Set a reward
+(expect-failure "Contract paused" "Contract is currently paused. Cannot perform operation." (set-rewards (read-msg 'qId ) "bob" (read-keyset 'g1 ) 0.03))
+(commit-tx)
+
+(begin-tx "Unpause the contract")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]}
+])
+(expect "Contract unpaused" "Unpaused" (unpause))
+(commit-tx)
+
+(begin-tx "Test set-rewards operation after unpause")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-chain-data { 'block-time: (time "2025-06-20T00:00:00Z")})
+(env-data {
+    'qId: "1090",
+    'g1: {'keys: ["bob-key"]},
+    'g2: {'keys: ["alice-key"]},
+    'g3: {'keys: ["carol-key"]}
+})
+; Set a reward
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]
+}])
+(expect "Bob awarded 0.03" true (set-rewards (read-msg 'qId ) "bob" (read-keyset 'g1 ) 0.03))
+(commit-tx)
+
+(begin-tx "Pause the contract")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]}
+])
+(expect "Contract paused" "Paused" (pause))
+(commit-tx)
+
+(begin-tx "Test claim operation after pause")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-data {
+    'qId: "1090",
+    'useId: "bob",
+    'amount: 0.03
+})
+; Claim a reward
+(expect-failure "Contract paused" "Contract is currently paused. Cannot perform operation." (claim (read-msg 'useId ) (read-msg 'qId )))
+(commit-tx)
+
+(begin-tx "Unpause the contract")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]}
+])
+(expect "Contract unpaused" "Unpaused" (unpause))
+(commit-tx)
+
+(begin-tx "Test claim operation after unpause")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-data {
+    'qId: "1090",
+    'useId: "bob",
+    'amount: 0.03
+})
+; Claim a reward
+(env-sigs [{
+    'key: "bob-key", 'caps: [(CLAIMABLE "bob" "1090")]
+}])
+(expect "Bob withdrew 0.03" "bob claimed 0.03 rewards from quest 1090" (claim (read-msg 'useId ) (read-msg 'qId )))
+(expect "amount 0.07" 0.07 (at 'amount (get-quest (read-msg 'qId ))))
+(commit-tx)
+
+(begin-tx "Pause the contract")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]}
+])
+(expect "Contract paused" "Paused" (pause))
+(commit-tx)
+
+(begin-tx "Test admin-withdrawal operation after pause")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-data {
+    'qId: "1090",
+    'userId: "dave",
+    'amount: 0.07
+})
+; Admin withdrawal
+(expect-failure "Contract paused" "Contract is currently paused. Cannot perform operation." (admin-withdrawal (read-msg 'qId ) (read-msg 'userId )))
+(commit-tx)
+
+(begin-tx "Unpause the contract")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]}
+])
+(expect "Contract unpaused" "Unpaused" (unpause))
+(commit-tx)
+
+(begin-tx "Test admin-withdrawal operation after unpause")
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-chain-data { 'block-time: (time "2025-08-20T00:00:00Z")})
+(env-data {
+    'qId: "1090",
+    'userId: "dave",
+    'amount: 0.07
+})
+; Admin withdrawal
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]
+}])
+(print (format "Treasury balance before withdrawal: {}" [(treasury-balance)]))
+(expect "Admin withdrew 0.07" "Write succeeded" (admin-withdrawal (read-msg 'qId ) (read-msg 'userId )))
+(expect "amount 0.0" 0.0 (at 'amount (get-quest (read-msg 'qId ))))
+(expect "Treasury balance 0.0" 0.00 (treasury-balance))
+(commit-tx)

@@ -9,10 +9,23 @@
 ; Load my module
 (begin-tx)
 (namespace 'CLAIM_NS)
-(load "claim.pact")
+;  (load "claim.pact")
+(load "galxe_claim.pact")
 (typecheck "CLAIM_NS.reward-claim")
 (commit-tx)
 
+; Initialize contract pause state
+(begin-tx)
+(namespace 'CLAIM_NS )
+(use reward-claim)
+(env-sigs [{
+    'key: "ops", 'caps: [(OPS)]}
+])
+(set-initial-state)
+(commit-tx)
+(env-sigs [])
+
+; Load the test module
 (env-gasmodel "table")(env-gaslimit 150000)
 (load "testing/main.repl")
 
